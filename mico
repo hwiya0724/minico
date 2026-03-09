@@ -1,0 +1,1395 @@
+index.html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>상벌점 기준 학습</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --surface: #e2e8f0;
+    --card: #ffffff;
+    --border: #cbd5e1;
+    --accent: #2563eb;
+    --accent2: #ef4444;
+    --gold: #d97706;
+    --green: #059669;
+    --text: #1e293b;
+    --muted: #64748b;
+    --exit: #dc2626;
+    --warning: #ea580c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* --- BACKGROUND --- */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -200px; right: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* --- SCREENS --- */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+
+  /* --- HOME --- */
+  .home-title {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #1d4ed8, #7c3aed, #dc2626);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .home-sub {
+    color: var(--muted);
+    font-size: 0.95rem;
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 640px;
+  }
+  .mode-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 24px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .mode-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .mode-card.flash::before { background: radial-gradient(circle at 50% 0%, rgba(79,142,247,0.15), transparent 70%); }
+  .mode-card.quiz::before  { background: radial-gradient(circle at 50% 0%, rgba(247,95,79,0.15), transparent 70%); }
+  .mode-card.ox::before    { background: radial-gradient(circle at 50% 0%, rgba(62,207,142,0.15), transparent 70%); }
+  .mode-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+  .mode-card:hover::before { opacity: 1; }
+  .mode-card.quiz:hover { border-color: var(--accent2); }
+  .mode-card.ox:hover   { border-color: var(--green); }
+  .mode-icon { font-size: 2.8rem; margin-bottom: 12px; }
+  .mode-label { font-weight: 700; font-size: 1.1rem; margin-bottom: 6px; }
+  .mode-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+  .stats-row {
+    display: flex; gap: 16px; margin-top: 32px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  .stat-pill {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .stat-pill span { color: var(--text); font-weight: 700; }
+
+  /* --- FLASHCARD --- */
+  .fc-header {
+    width: 100%; max-width: 600px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .fc-progress-wrap { flex: 1; margin: 0 16px; }
+  .fc-progress-bar {
+    height: 6px; background: var(--border); border-radius: 99px; overflow: hidden;
+  }
+  .fc-progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent), #a78bfa);
+    border-radius: 99px; transition: width 0.4s;
+  }
+  .fc-counter { font-size: 0.85rem; color: var(--muted); margin-top: 6px; text-align: center; }
+
+  .flashcard-wrap { perspective: 1200px; width: 100%; max-width: 600px; }
+  .flashcard {
+    width: 100%; height: 220px;
+    position: relative; cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(.4,0,.2,1);
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .fc-face {
+    position: absolute; inset: 0;
+    border-radius: 24px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 28px 32px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .fc-front {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  }
+  .fc-back {
+    background: linear-gradient(135deg, #eff6ff, #eef2ff);
+    border: 1.5px solid var(--accent);
+    transform: rotateY(180deg);
+    box-shadow: 0 4px 16px rgba(37,99,235,0.12);
+  }
+  .fc-hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .fc-content { font-size: 1.05rem; font-weight: 500; text-align: center; line-height: 1.7; }
+  .fc-score {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 3rem;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .fc-score-label { font-size: 0.85rem; color: var(--muted); }
+
+  .fc-tag {
+    display: inline-block;
+    padding: 4px 12px; border-radius: 99px;
+    font-size: 0.75rem; font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .tag-exit   { background: rgba(255,92,92,0.15); color: var(--exit); }
+  .tag-high   { background: rgba(255,159,67,0.15); color: var(--warning); }
+  .tag-mid    { background: rgba(245,197,66,0.15); color: var(--gold); }
+  .tag-low    { background: rgba(62,207,142,0.15); color: var(--green); }
+  .tag-minor  { background: rgba(79,142,247,0.15); color: var(--accent); }
+
+  .fc-actions {
+    display: flex; gap: 12px; margin-top: 20px; width: 100%; max-width: 600px;
+  }
+  .btn {
+    flex: 1; padding: 14px;
+    border: none; border-radius: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-prev { background: var(--card); color: var(--muted); border: 1.5px solid var(--border); }
+  .btn-next { background: var(--accent); color: #fff; }
+  .btn-home { background: var(--card); color: var(--muted); border: 1.5px solid var(--border); flex: 0 0 auto; padding: 14px 20px; }
+  .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  /* --- QUIZ --- */
+  .quiz-header {
+    width: 100%; max-width: 640px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .quiz-qnum { font-family: 'Black Han Sans', sans-serif; font-size: 1.1rem; color: var(--accent); }
+  .quiz-score-disp { font-size: 0.9rem; color: var(--muted); }
+  .quiz-score-disp span { color: var(--green); font-weight: 700; }
+
+  .quiz-progress-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; width: 100%; max-width: 640px; margin-bottom: 28px; }
+  .quiz-progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--gold)); border-radius: 99px; transition: width 0.4s; }
+
+  .quiz-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    padding: 32px 28px;
+    width: 100%; max-width: 640px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+  .quiz-q { font-size: 1.05rem; font-weight: 500; line-height: 1.8; margin-bottom: 28px; }
+
+  .quiz-options { display: flex; flex-direction: column; gap: 12px; }
+  .quiz-opt {
+    padding: 14px 20px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 0.95rem; font-weight: 500;
+    cursor: pointer; text-align: left;
+    transition: all 0.2s;
+  }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+  .quiz-opt.correct { border-color: var(--green); background: rgba(62,207,142,0.12); color: var(--green); }
+  .quiz-opt.wrong   { border-color: var(--exit);  background: rgba(255,92,92,0.10);  color: var(--exit); }
+  .quiz-opt:disabled { cursor: default; }
+
+  .quiz-feedback {
+    display: none; margin-top: 16px;
+    padding: 14px 18px; border-radius: 12px;
+    font-size: 0.9rem; font-weight: 500; line-height: 1.6;
+  }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok  { background: rgba(62,207,142,0.1); color: var(--green); border: 1px solid rgba(62,207,142,0.3); }
+  .quiz-feedback.ng  { background: rgba(255,92,92,0.1);  color: var(--exit);  border: 1px solid rgba(255,92,92,0.3); }
+
+  /* 정답 강조 박스 (오답 시) */
+  .answer-reveal {
+    display: none; margin-top: 12px;
+    padding: 16px 18px; border-radius: 14px;
+    background: rgba(37,99,235,0.06); border: 1.5px solid rgba(37,99,235,0.25);
+  }
+  .answer-reveal.show { display: block; }
+  .answer-reveal-label { font-size: 0.75rem; color: var(--accent); font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
+  .answer-reveal-text  { font-size: 1rem; color: var(--accent); font-weight: 700; }
+
+  /* OX 버튼 */
+  .ox-btns { display: flex; gap: 16px; margin-top: 20px; width: 100%; max-width: 640px; }
+  .ox-btn {
+    flex: 1; padding: 22px; border: 2px solid var(--border);
+    border-radius: 20px; background: var(--card);
+    font-size: 2.5rem; cursor: pointer; transition: all 0.2s;
+    font-family: 'Black Han Sans', sans-serif;
+  }
+  .ox-btn:hover:not(:disabled) { transform: scale(1.05); }
+  .ox-btn.o-btn:hover:not(:disabled) { border-color: var(--green); background: rgba(62,207,142,0.1); }
+  .ox-btn.x-btn:hover:not(:disabled) { border-color: var(--exit);  background: rgba(255,92,92,0.1); }
+  .ox-btn.correct { border-color: var(--green); background: rgba(62,207,142,0.15); }
+  .ox-btn.wrong   { border-color: var(--exit);  background: rgba(255,92,92,0.12); }
+  .ox-btn:disabled { cursor: default; opacity: 0.7; }
+
+  /* OX 문제 점수 강조 */
+  .ox-score-highlight {
+    display: inline-block; font-family: 'Black Han Sans', sans-serif;
+    font-size: 1.6rem; color: var(--accent);
+    background: rgba(37,99,235,0.08); border-radius: 8px;
+    padding: 2px 12px; margin: 8px 0;
+  }
+
+  .btn-quiz-next {
+    display: none; width: 100%; max-width: 640px;
+    padding: 16px; border: none; border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    color: #fff; font-family: 'Noto Sans KR', sans-serif;
+    font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-quiz-next.show { display: block; }
+  .btn-quiz-next:hover { filter: brightness(1.1); }
+
+  /* --- RESULT --- */
+  .result-card {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 28px; padding: 36px 28px;
+    text-align: center; width: 100%; max-width: 540px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  .result-emoji { font-size: 3.5rem; margin-bottom: 12px; }
+  .result-title { font-family: 'Black Han Sans', sans-serif; font-size: 1.8rem; margin-bottom: 6px; }
+  .result-sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+  .result-score-big {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 4.5rem; line-height: 1;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+  .result-score-label { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+
+  /* 오답 통계 요약 */
+  .result-stats {
+    display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .result-stat-pill {
+    padding: 8px 16px; border-radius: 99px; font-size: 0.82rem; font-weight: 700;
+  }
+  .pill-wrong { background: rgba(255,92,92,0.12); color: var(--exit); border: 1px solid rgba(255,92,92,0.3); }
+  .pill-correct { background: rgba(62,207,142,0.12); color: var(--green); border: 1px solid rgba(62,207,142,0.3); }
+
+  /* 틀린 문제 목록 */
+  .wrong-list-wrap {
+    display: none; text-align: left; margin-top: 16px;
+    max-height: 260px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 16px;
+    background: var(--bg);
+  }
+  .wrong-list-wrap.show { display: block; }
+  .wrong-item {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .wrong-item:last-child { border-bottom: none; }
+  .wrong-num {
+    font-size: 0.7rem; font-weight: 700; color: var(--exit);
+    background: rgba(255,92,92,0.12); border-radius: 6px;
+    padding: 2px 7px; white-space: nowrap; margin-top: 2px; flex-shrink: 0;
+  }
+  .wrong-content { font-size: 0.85rem; line-height: 1.6; flex: 1; }
+  .wrong-score-row { display: flex; gap: 8px; margin-top: 5px; align-items: center; }
+  .wrong-my   { font-size: 0.78rem; color: var(--exit); background: rgba(255,92,92,0.1); padding: 2px 8px; border-radius: 6px; }
+  .wrong-ans  { font-size: 0.78rem; color: var(--gold); background: rgba(245,197,66,0.1); padding: 2px 8px; border-radius: 6px; font-weight: 700; }
+  .wrong-tries { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
+
+  /* 누적 오답 횟수 배지 */
+  .wrong-count-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 20px; height: 20px; border-radius: 99px;
+    background: var(--exit); color: #fff;
+    font-size: 0.7rem; font-weight: 900; padding: 0 5px; margin-left: 6px;
+    vertical-align: middle;
+    box-shadow: 0 1px 4px rgba(220,38,38,0.3);
+  }
+
+  .result-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+  .btn-retry { padding: 12px 22px; border-radius: 14px; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+  .btn-retry:hover { background: rgba(79,142,247,0.1); }
+  .btn-retry-wrong { padding: 12px 22px; border-radius: 14px; border: 1.5px solid var(--exit); background: rgba(255,92,92,0.08); color: var(--exit); font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+  .btn-retry-wrong:hover { background: rgba(255,92,92,0.15); }
+  .btn-toggle-wrong { padding: 12px 22px; border-radius: 14px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+  .btn-toggle-wrong:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-home2 { padding: 12px 22px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+  .btn-home2:hover { filter: brightness(1.1); }
+
+  /* --- 자주 틀리는 항목 --- */
+  .weak-screen-inner { width: 100%; max-width: 680px; }
+  .weak-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .weak-title-text { font-family: 'Black Han Sans', sans-serif; font-size: 1.3rem; }
+  .weak-empty {
+    text-align: center; padding: 60px 24px;
+    color: var(--muted); font-size: 0.95rem; line-height: 2;
+  }
+  .weak-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+  .weak-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; }
+  .weak-list { display: flex; flex-direction: column; gap: 10px; max-height: 65vh; overflow-y: auto; padding-right: 4px; }
+  .weak-item {
+    background: var(--card); border: 1.5px solid rgba(220,38,38,0.2);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: border-color 0.2s;
+    box-shadow: 0 1px 6px rgba(220,38,38,0.06);
+  }
+  .weak-item:hover { border-color: var(--exit); }
+  .weak-rank-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+  .weak-rank {
+    font-family: 'Black Han Sans', sans-serif; font-size: 1rem;
+    color: var(--exit); min-width: 28px; text-align: center;
+  }
+  .weak-fire { font-size: 0.9rem; }
+  .weak-body { flex: 1; }
+  .weak-content-text { font-size: 0.9rem; line-height: 1.6; margin-bottom: 8px; }
+  .weak-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .weak-score-tag {
+    font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 8px;
+  }
+  .weak-count-tag {
+    font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 8px;
+    background: rgba(255,92,92,0.12); color: var(--exit);
+  }
+  .weak-bar-wrap { flex: 1; min-width: 80px; background: var(--border); border-radius: 99px; height: 6px; overflow: hidden; }
+  .weak-bar { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--exit), var(--warning)); transition: width 0.6s; }
+  .weak-action-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .btn-weak-quiz { padding: 12px 20px; border-radius: 14px; border: none; background: var(--exit); color: #fff; font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+  .btn-weak-quiz:hover { filter: brightness(1.1); }
+  .btn-weak-ox { padding: 12px 20px; border-radius: 14px; border: 1.5px solid var(--exit); background: transparent; color: var(--exit); font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+  .btn-weak-ox:hover { background: rgba(255,92,92,0.08); }
+
+  /* --- CATEGORY BROWSE --- */
+  .cat-screen-inner { width: 100%; max-width: 680px; }
+  .cat-top { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .cat-title-text { font-family: 'Black Han Sans', sans-serif; font-size: 1.3rem; }
+
+  .cat-tabs {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .cat-tab {
+    padding: 7px 16px; border-radius: 99px; border: 1.5px solid var(--border);
+    background: var(--card); color: var(--muted);
+    font-family: 'Noto Sans KR', sans-serif; font-size: 0.82rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .cat-tab:hover { border-color: var(--accent); color: var(--text); }
+  .cat-tab.active { color: #fff; border-color: transparent; }
+  .cat-tab[data-cat="전체"].active   { background: #4a5568; }
+  .cat-tab[data-cat="음주"].active   { background: #c05621; }
+  .cat-tab[data-cat="폭력·성"].active { background: #9b2335; }
+  .cat-tab[data-cat="무단이탈"].active { background: #2b6cb0; }
+  .cat-tab[data-cat="흡연"].active   { background: #276749; }
+  .cat-tab[data-cat="보고·허위"].active { background: #6b46c1; }
+  .cat-tab[data-cat="품위·복장"].active { background: #744210; }
+  .cat-tab[data-cat="시설·물품"].active { background: #2c7a7b; }
+  .cat-tab[data-cat="수업·학습"].active { background: #285e61; }
+  .cat-tab[data-cat="생활질서"].active { background: #4a5568; }
+  .cat-tab[data-cat="퇴교"].active   { background: #9b2335; }
+
+  .cat-list { display: flex; flex-direction: column; gap: 8px; max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+  .cat-item {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+    transition: border-color 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .cat-item:hover { border-color: var(--accent); }
+  .cat-score-badge {
+    flex-shrink: 0; font-family: 'Black Han Sans', sans-serif;
+    font-size: 0.85rem; padding: 4px 10px; border-radius: 8px;
+    min-width: 52px; text-align: center; margin-top: 1px;
+  }
+  .badge-exit   { background: rgba(255,92,92,0.15);  color: var(--exit); }
+  .badge-high   { background: rgba(255,159,67,0.15); color: var(--warning); }
+  .badge-mid    { background: rgba(245,197,66,0.15); color: var(--gold); }
+  .badge-low    { background: rgba(62,207,142,0.15); color: var(--green); }
+  .badge-minor  { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .cat-item-content { font-size: 0.9rem; line-height: 1.6; color: var(--text); }
+  .cat-keyword {
+    display: inline-block; font-size: 0.7rem; color: var(--muted);
+    background: var(--surface); border-radius: 4px; padding: 1px 6px; margin-top: 4px;
+  }
+  .cat-count { font-size: 0.78rem; color: var(--muted); margin-left: auto; white-space: nowrap; padding-top: 2px; }
+
+  /* --- 문제 수 선택 모달 --- */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    z-index: 100; align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-box {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: 24px; padding: 32px 28px;
+    width: 100%; max-width: 400px; margin: 24px;
+    animation: slideIn 0.25s ease both;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+  .modal-title { font-family: 'Black Han Sans', sans-serif; font-size: 1.3rem; margin-bottom: 6px; }
+  .modal-sub   { font-size: 0.85rem; color: var(--muted); margin-bottom: 24px; }
+  .count-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+  .count-opt {
+    padding: 16px 8px; border-radius: 14px;
+    border: 2px solid var(--border); background: var(--bg);
+    font-family: 'Black Han Sans', sans-serif; font-size: 1.4rem;
+    color: var(--text); cursor: pointer; text-align: center;
+    transition: all 0.18s; position: relative;
+  }
+  .count-opt:hover { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+  .count-opt.selected { border-color: var(--accent); background: rgba(79,142,247,0.12); color: var(--accent); }
+  .count-opt-label { display: block; font-size: 0.72rem; font-family: 'Noto Sans KR', sans-serif; color: var(--muted); margin-top: 4px; font-weight: 400; }
+  .count-custom-row { display: flex; gap: 10px; align-items: center; margin-bottom: 24px; }
+  .count-custom-input {
+    flex: 1; padding: 12px 16px; border-radius: 12px;
+    border: 2px solid var(--border); background: var(--bg);
+    color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 1rem;
+    transition: border-color 0.2s;
+  }
+  .count-custom-input:focus { outline: none; border-color: var(--accent); }
+  .count-custom-label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-cancel { flex: 1; padding: 14px; border-radius: 14px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+  .modal-cancel:hover { border-color: var(--text); color: var(--text); }
+  .modal-start  { flex: 2; padding: 14px; border-radius: 14px; border: none; background: var(--accent); color: #fff; font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+  .modal-start:hover { filter: brightness(1.1); }
+  .modal-start.ox-start { background: var(--green); }
+
+  /* Shuffle animation */
+  @keyframes slideIn { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+  .anim { animation: slideIn 0.35s ease both; }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen active" id="home">
+  <div class="home-title">상벌점 기준 학습</div>
+  <div class="home-sub">플래시카드와 모의시험으로 완벽하게 암기하자 💪</div>
+  <div class="mode-grid">
+    <div class="mode-card flash" onclick="startFlash()">
+      <div class="mode-icon">🃏</div>
+      <div class="mode-label">플래시카드</div>
+      <div class="mode-desc">내용 → 점수 순서로<br>하나씩 넘겨가며 암기</div>
+    </div>
+    <div class="mode-card quiz" onclick="openCountModal('quiz')">
+      <div class="mode-icon">📝</div>
+      <div class="mode-label">객관식</div>
+      <div class="mode-desc">이 행위 몇 점?<br>4지선다 · 문제 수 선택</div>
+    </div>
+    <div class="mode-card ox" onclick="openCountModal('ox')">
+      <div class="mode-icon">⭕</div>
+      <div class="mode-label">O/X 퀴즈</div>
+      <div class="mode-desc">점수 맞으면 O 틀리면 X<br>문제 수 선택</div>
+    </div>
+    <div class="mode-card" style="border-color:var(--border);grid-column:1/-1;" onclick="startCat()">
+      <div class="mode-icon">📂</div>
+      <div class="mode-label">유형별 보기</div>
+      <div class="mode-desc">음주·폭력·무단이탈 등 비슷한 항목끼리 묶어서 한눈에 확인</div>
+    </div>
+    <div class="mode-card" style="border-color:rgba(255,92,92,0.4);grid-column:1/-1;position:relative;" onclick="startWeak()">
+      <div style="position:absolute;top:12px;right:14px;" id="weakBadgeHome"></div>
+      <div class="mode-icon">🔥</div>
+      <div class="mode-label" style="color:var(--exit);">자주 틀리는 항목</div>
+      <div class="mode-desc">3회 이상 틀린 항목만 모아 집중 복습</div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat-pill">총 <span id="total-count">0</span>개 항목</div>
+    <div class="stat-pill">퇴교 <span>9</span>개 · 감점 <span>50</span>개</div>
+  </div>
+</div>
+
+<!-- 자주 틀리는 항목 -->
+<div class="screen" id="weakScreen">
+  <div class="weak-screen-inner">
+    <div class="weak-top">
+      <button class="btn btn-home" onclick="goHome()" style="flex:0 0 auto;">← 홈</button>
+      <div class="weak-title-text">🔥 자주 틀리는 항목</div>
+      <div style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="weakCountDisp"></div>
+    </div>
+    <div class="weak-sub" id="weakSubMsg">3회 이상 틀린 항목을 집중 복습하세요!</div>
+    <div class="weak-action-row" id="weakActionRow" style="margin-bottom:16px;display:none;">
+      <button class="btn-weak-quiz" onclick="startWeakQuiz()">📝 객관식으로 풀기</button>
+      <button class="btn-weak-ox"   onclick="startWeakOX()">⭕ O/X로 풀기</button>
+    </div>
+    <div id="weakContent"></div>
+  </div>
+</div>
+
+<!-- FLASHCARD -->
+<div class="screen" id="flashScreen">
+  <div class="fc-header">
+    <button class="btn btn-home" onclick="goHome()">← 홈</button>
+    <div class="fc-progress-wrap">
+      <div class="fc-progress-bar"><div class="fc-progress-fill" id="fcFill" style="width:0%"></div></div>
+      <div class="fc-counter" id="fcCounter">1 / 59</div>
+    </div>
+    <button class="btn btn-home" onclick="shuffleCards()" style="font-size:1.2rem;padding:14px 16px;">🔀</button>
+  </div>
+  <div class="flashcard-wrap">
+    <div class="flashcard" id="flashcard" onclick="flipCard()">
+      <div class="fc-face fc-front">
+        <div class="fc-hint">📋 내용 — 탭하여 점수 확인</div>
+        <div class="fc-content" id="fcFront"></div>
+      </div>
+      <div class="fc-face fc-back">
+        <div class="fc-hint">감점</div>
+        <div class="fc-tag" id="fcTag"></div>
+        <div class="fc-score" id="fcScore"></div>
+        <div class="fc-score-label" id="fcScoreLabel"></div>
+      </div>
+    </div>
+  </div>
+  <div class="fc-actions">
+    <button class="btn btn-prev" onclick="prevCard()">← 이전</button>
+    <button class="btn btn-next" onclick="nextCard()">다음 →</button>
+  </div>
+</div>
+
+<!-- CATEGORY BROWSE -->
+<div class="screen" id="catScreen">
+  <div class="cat-screen-inner">
+    <div class="cat-top">
+      <button class="btn btn-home" onclick="goHome()" style="flex:0 0 auto;">← 홈</button>
+      <div class="cat-title-text">📂 유형별 보기</div>
+      <div class="cat-count" id="catCountDisp" style="margin-left:auto;"></div>
+    </div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="cat-list" id="catList"></div>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div class="screen" id="quizScreen">
+  <div class="quiz-header">
+    <div class="quiz-qnum" id="quizQNum">문제 1 / 20</div>
+    <div class="quiz-score-disp">점수: <span id="quizScoreDisp">0</span></div>
+  </div>
+  <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quizFill" style="width:5%"></div></div>
+  <div class="quiz-card anim" id="quizCard">
+    <div class="quiz-q" id="quizQ"></div>
+    <div class="quiz-options" id="quizOpts"></div>
+    <div class="quiz-feedback" id="quizFb"></div>
+    <div class="answer-reveal" id="quizReveal">
+      <div class="answer-reveal-label">✅ 정답은</div>
+      <div class="answer-reveal-text" id="quizRevealText"></div>
+    </div>
+  </div>
+  <button class="btn-quiz-next" id="quizNextBtn" onclick="nextQuestion()">다음 문제 →</button>
+</div>
+
+<!-- OX QUIZ -->
+<div class="screen" id="oxScreen">
+  <div class="quiz-header">
+    <div class="quiz-qnum" id="oxQNum">문제 1 / 20</div>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <div class="quiz-score-disp">정답: <span id="oxScoreDisp" style="color:var(--green)">0</span></div>
+      <button class="btn btn-home" onclick="goHome()" style="padding:8px 14px;font-size:0.85rem;">← 홈</button>
+    </div>
+  </div>
+  <div class="quiz-progress-bar" style="margin-bottom:20px;"><div class="quiz-progress-fill" id="oxFill" style="width:5%"></div></div>
+  <div class="quiz-card anim" id="oxCard">
+    <div style="font-size:0.75rem;color:var(--muted);letter-spacing:1px;margin-bottom:10px;">💡 표시된 점수가 맞으면 O, 틀리면 X</div>
+    <div class="quiz-q" id="oxQ" style="margin-bottom:16px;"></div>
+    <div style="text-align:center;"><span class="ox-score-highlight" id="oxScoreShown"></span></div>
+    <div class="quiz-feedback" id="oxFb"></div>
+    <div class="answer-reveal" id="oxReveal">
+      <div class="answer-reveal-label">✅ 정답은</div>
+      <div class="answer-reveal-text" id="oxRevealText"></div>
+    </div>
+  </div>
+  <div class="ox-btns">
+    <button class="ox-btn o-btn" id="oxBtnO" onclick="answerOX(true)">⭕</button>
+    <button class="ox-btn x-btn" id="oxBtnX" onclick="answerOX(false)">❌</button>
+  </div>
+  <button class="btn-quiz-next" id="oxNextBtn" onclick="nextOX()" style="margin-top:16px;max-width:640px;">다음 문제 →</button>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="resultScreen">
+  <div class="result-card anim">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <div class="result-title" id="resultTitle">결과</div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="result-score-big" id="resultBig"></div>
+    <div class="result-score-label" id="resultLabel">점 / 100점</div>
+    <div class="result-stats" id="resultStats"></div>
+    <div class="wrong-list-wrap" id="wrongListWrap"></div>
+    <div class="result-btns">
+      <button class="btn-toggle-wrong" id="btnToggleWrong" onclick="toggleWrongList()" style="display:none;">📋 오답 보기</button>
+      <button class="btn-retry-wrong" id="btnRetryWrong" onclick="retryWrong()" style="display:none;">🔁 틀린 문제만</button>
+      <button class="btn-retry" id="btnRetryAll" onclick="retryAll()">🔄 다시 풀기</button>
+      <button class="btn-home2" onclick="goHome()">홈으로</button>
+    </div>
+  </div>
+</div>
+
+<!-- 문제 수 선택 모달 -->
+<div class="modal-overlay" id="countModal">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">문제 수 선택</div>
+    <div class="modal-sub" id="modalSub">몇 문제를 풀까요? (최대 <span id="modalMax">51</span>문제)</div>
+    <div class="count-options">
+      <button class="count-opt selected" data-val="10" onclick="selectCount(this)">
+        10<span class="count-opt-label">빠르게</span>
+      </button>
+      <button class="count-opt" data-val="20" onclick="selectCount(this)">
+        20<span class="count-opt-label">기본</span>
+      </button>
+      <button class="count-opt" data-val="30" onclick="selectCount(this)">
+        30<span class="count-opt-label">꼼꼼하게</span>
+      </button>
+      <button class="count-opt" data-val="all" onclick="selectCount(this)">
+        전체<span class="count-opt-label" id="modalAllLabel">51문제</span>
+      </button>
+    </div>
+    <div class="count-custom-row">
+      <span class="count-custom-label">직접 입력</span>
+      <input class="count-custom-input" id="countCustomInput" type="number" min="1" placeholder="예: 15" oninput="onCustomInput(this)">
+      <span class="count-custom-label">문제</span>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeCountModal()">취소</button>
+      <button class="modal-start" id="modalStartBtn" onclick="confirmCountModal()">시작 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = [
+  {content:"고의 또는 중과실로 현행법 위반 소지가 있는 행위를 하여 물의 야기 또는 학교의 명예를 심히 훼손한 경우", score:"퇴교", cat:"exit"},
+  {content:"폭력(피해자처벌의사有),성범죄,성매매,절도,도박,손괴,명예훼손(정보통신망 이용 등),무고,공문서 위변조 등 불법행위", score:"퇴교", cat:"exit"},
+  {content:"집단적·상습적 동료 간, 제3자에 대한 성희롱(\"성희롱\"이란 성범죄의 성립 여부와 관계없이 상대방에게 성적 굴욕감, 불쾌감 또는 혐오감을 일으키는 행위 또는 성적 언동 사용을 말한다.)", score:"퇴교", cat:"exit"},
+  {content:"집단적·상습적 동료 간 허위사실 유포·따돌림(비난,조롱,비방)·괴롭힘 등 화합 저해 행위 또는 선동", score:"퇴교", cat:"exit"},
+  {content:"교육생 신분으로 사회적 비난 가능성이 큰 행위, 물의 야기 또는 이에 준하여 학교의 명예를 심히 훼손하는 행위", score:"퇴교", cat:"exit"},
+  {content:"음주운전(자전거, PM포함)", score:"퇴교", cat:"exit"},
+  {content:"음주 후 폭력, 소란 등 각종 행위로 물의 야기 또는 학교 명예 훼손", score:"퇴교", cat:"exit"},
+  {content:"시험 부정행위 및 각종 평가 담합행위(교수평가, 동료평가 등)", score:"퇴교", cat:"exit"},
+  {content:"학교에서 허용하지 아니하는 집단 행위", score:"퇴교", cat:"exit"},
+  {content:"무단 외출·외박 또는 수업, 일과, 각종 집결 등 무단 이탈(2시간초과 시)", score:"퇴교", cat:"exit"},
+  {content:"교육운영위원회에서 생활지도위원회에 관심교육생 지정 및 감점 등 처분을 요구한 경우", score:"20점 이하", cat:"high"},
+  {content:"무단 외출, 수업, 일과, 각종 집결 무단불참 (10분 초과 시 불참 간주)\n※10분 초과~1시간 이하: 감점5점 / 1시간 초과~2시간 이하: 10점 / 2시간 초과: 감점 15점", score:"5~15점", cat:"high"},
+  {content:"음주 후 시비, 욕설, 소란, 추태 또는 지시 불응", score:"15점", cat:"high"},
+  {content:"휴가·외출·외박사유 허위보고 또는 보고 외 행위", score:"15점", cat:"high"},
+  {content:"교육 중 작성·지독한 중요문건, 내용, 학교 문건 등 무단유출", score:"15점", cat:"high"},
+  {content:"타인의 성명, 소속, 생년월일 등 개인정보 유출(교육목적·교내활동·임무수행 제외)", score:"15점", cat:"high"},
+  {content:"입교 등록 및 외박 후 귀교 시간 미준수 (전재지변 등 불가피한 경우 예외)\n※ 10분 초과~1시간 이하: 5점 감점 / 1시간 초과 시: 10점 감점", score:"5~10점", cat:"mid"},
+  {content:"교육생활에 지장을 초래할 정도의 과음 (서류작성 곤란, 횡설수설, 똑바로 서 있지 못하는 경우 등)", score:"10점", cat:"mid"},
+  {content:"교내 주류 무단 반입, 일과 중 교내외 허용되지 않은 음주", score:"10점", cat:"mid"},
+  {content:"동료 간 허위사실 유포·따돌림(비난,조롱,비방)·괴롭힘 등 화합 저해 행위 또는 선동, 방조", score:"10점", cat:"mid"},
+  {content:"경미한 폭력(피해자 처벌 불원), 사행 행위", score:"10점", cat:"mid"},
+  {content:"그 밖에 성적 언동 등으로 당사자 또는 타인에게 심각한 성적 불쾌감을 주는 경우", score:"10점", cat:"mid"},
+  {content:"시설물 이용 시간 외 이용 등 이용 방법 위반", score:"10점", cat:"mid"},
+  {content:"급·대여품 분실 또는 훼손(경찰장구, 흉장, 무전기)", score:"7점", cat:"low"},
+  {content:"시설물·장비·비품 등 고의·중과실 파손", score:"7점", cat:"low"},
+  {content:"허위보고, 불성실한 보고(중요 사항 미보고 및 누락)", score:"7점", cat:"low"},
+  {content:"욕설·비속어 등 사용(신체 언어 포함)", score:"7점", cat:"low"},
+  {content:"교내 생활 전반, 교내 시설물, 각종 행사 등 관련 사진, 문서, 동영상 등 모든 형태의 기록정보 자료를 게시·배포하여 품위 손상, 물의 야기 또는 학교 명예 훼손하는 경우(SNS 개인계정 포함)", score:"5점", cat:"low"},
+  {content:"금연구역에서의 흡연(전자담배 포함)", score:"5점", cat:"low"},
+  {content:"급·대여품 분실 또는 훼손(경찰피복류 및 기타 불품)", score:"3점", cat:"minor"},
+  {content:"주요 지침·지시 위반(학교장·교수부장·학생·교무과장·학생지도실장·학생지도팀장 지시 등)", score:"3점", cat:"minor"},
+  {content:"흡연 구역 외 흡연(전자담배 포함)", score:"3점", cat:"minor"},
+  {content:"음주 후 시비, 욕설, 소란, 추태 또는 지시 불응 감점항목 또는 과음 감점항목에 해당하는 자의 동석자(음주 여부 불문)", score:"3점", cat:"minor"},
+  {content:"수업 중 허가 없이 전자기기(휴대폰, 스마트워치 등) 사용 또는 수업태도 불성실(엎드려 자는 행위 등)", score:"3점", cat:"minor"},
+  {content:"일상적 보고사항의 불성실한 보고(인원 점검, 외진 등)", score:"2점", cat:"minor"},
+  {content:"수업 일과, 각종 집결, 외출 후 귀교(생활관 도착 기준) 시간 미준수(10분 초과 시 1시간 불참 간주)", score:"2점", cat:"minor"},
+  {content:"쓰레기(담배꽁초) 무단 투기, 침 뱉기", score:"2점", cat:"minor"},
+  {content:"지정 복장·근무모 미착용, 허가 외 복장", score:"2점", cat:"minor"},
+  {content:"교수·교직원의 기타 정당한 지시사항 위반", score:"1점", cat:"minor"},
+  {content:"교내에서 사회 통념상 허용되지 않는 애정 행위", score:"1점", cat:"minor"},
+  {content:"수업교재 또는 준비물 미지참", score:"1점", cat:"minor"},
+  {content:"단정하지 않은 용모·복장 불량(제복착용시 머리망 미착용, 과도한 염색·장신구 등)", score:"1점", cat:"minor"},
+  {content:"소등시간 이후 타인의 수면을 방해하는 행위", score:"1점", cat:"minor"},
+  {content:"허가받지 아니한 전기·전열기구, 취사기구 사용", score:"1점", cat:"minor"},
+  {content:"소등·전원차단 지시 불이행", score:"1점", cat:"minor"},
+  {content:"기타 소음·위생 불량 등으로 타인의 생활을 침해하는 행위", score:"1점", cat:"minor"},
+  {content:"정리정돈·청소 미비", score:"1점", cat:"minor"},
+  {content:"허가 받지 아니하고 조리된 음식물을 교내에 반입하거나 취식하는 행위", score:"1점", cat:"minor"},
+  {content:"개별·대열 이동시 보행예절 위반(입수, 장난, 고성, 팔짱, 휴대전화·이어폰 사용 등)\n※보행 중 휴대전화 허용(19~21시), 단 임무 목적 사용은 예외", score:"1점", cat:"minor"},
+  {content:"교수·교직원에게 불손한 태도 또는 인사예절 위반(보행 중 핸드폰 사용시 묵례), 그밖에 경미한 품위 손상", score:"1점", cat:"minor"},
+  {content:"수송버스 내 부적절한 행동(사회 통념상 허용되지 않는 애정행위, 무임승차 등)", score:"1점", cat:"minor"},
+  {content:"주차 질서 위반(세부내용은 자치회 수립 계획에 의한다)", score:"1점", cat:"minor"},
+];
+
+document.getElementById('total-count').textContent = DATA.length;
+
+// --- UTILS ---
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goHome() { showScreen('home'); }
+
+function shuffleArr(a) {
+  for (let i = a.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// --- 문제 수 선택 모달 ---
+let modalMode = 'quiz';   // 'quiz' | 'ox'
+let selectedCount = 10;
+let modalPool = null;     // null이면 전체 DATA 사용, 배열이면 해당 풀 사용
+
+function openCountModal(mode, pool = null) {
+  modalMode = mode;
+  modalPool = pool;
+  const maxN = pool ? pool.length : DATA.length;
+
+  document.getElementById('modalTitle').textContent = mode === 'quiz' ? '📝 객관식 — 문제 수 선택' : '⭕ O/X — 문제 수 선택';
+  document.getElementById('modalSub').innerHTML = `몇 문제를 풀까요? (최대 <span id="modalMax">${maxN}</span>문제)`;
+  document.getElementById('modalAllLabel').textContent = `${maxN}문제`;
+  document.getElementById('modalStartBtn').className = mode === 'quiz' ? 'modal-start' : 'modal-start ox-start';
+  document.getElementById('countCustomInput').value = '';
+
+  // 기본 선택 10으로 리셋
+  selectedCount = Math.min(10, maxN);
+  document.querySelectorAll('.count-opt').forEach(b => b.classList.remove('selected'));
+  const def = document.querySelector('.count-opt[data-val="10"]');
+  if (def) def.classList.add('selected');
+
+  // 최대치 초과 옵션 비활성화
+  document.querySelectorAll('.count-opt[data-val]').forEach(b => {
+    const v = b.dataset.val;
+    if (v !== 'all' && parseInt(v) > maxN) {
+      b.style.opacity = '0.35'; b.style.pointerEvents = 'none';
+    } else {
+      b.style.opacity = ''; b.style.pointerEvents = '';
+    }
+  });
+
+  document.getElementById('countModal').classList.add('show');
+}
+
+function closeCountModal() {
+  document.getElementById('countModal').classList.remove('show');
+}
+
+function selectCount(btn) {
+  document.querySelectorAll('.count-opt').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('countCustomInput').value = '';
+  const maxN = modalPool ? modalPool.length : DATA.length;
+  selectedCount = btn.dataset.val === 'all' ? maxN : Math.min(parseInt(btn.dataset.val), maxN);
+}
+
+function onCustomInput(input) {
+  document.querySelectorAll('.count-opt').forEach(b => b.classList.remove('selected'));
+  const maxN = modalPool ? modalPool.length : DATA.length;
+  const v = Math.max(1, Math.min(parseInt(input.value) || 1, maxN));
+  selectedCount = v;
+}
+
+function confirmCountModal() {
+  // 직접입력값 우선
+  const customVal = document.getElementById('countCustomInput').value;
+  if (customVal !== '') {
+    const maxN = modalPool ? modalPool.length : DATA.length;
+    selectedCount = Math.max(1, Math.min(parseInt(customVal) || 1, maxN));
+  }
+  closeCountModal();
+  if (modalMode === 'quiz') startQuiz(selectedCount, modalPool);
+  else startOX(selectedCount, modalPool);
+}
+
+const tagLabel = { exit:'퇴교', high:'고감점', mid:'중감점', low:'저감점', minor:'경미' };
+const tagClass = { exit:'tag-exit', high:'tag-high', mid:'tag-mid', low:'tag-low', minor:'tag-minor' };
+const scoreColors = { exit:'#ff5c5c', high:'#ff9f43', mid:'#f5c542', low:'#3ecf8e', minor:'#4f8ef7' };
+
+// --- 유형 분류 태그 ---
+const TOPIC_MAP = [
+  { key:'퇴교',     label:'🚫 퇴교',     match: d => d.cat === 'exit' },
+  { key:'음주',     label:'🍺 음주',     match: d => /음주|주류|과음/.test(d.content) },
+  { key:'폭력·성', label:'⚠️ 폭력·성',  match: d => /폭력|성희롱|성범죄|성매매|성적 언동|불쾌감/.test(d.content) },
+  { key:'무단이탈', label:'🚪 무단이탈', match: d => /무단 외출|외박|귀교|무단불참|무단 이탈|집결/.test(d.content) },
+  { key:'흡연',     label:'🚬 흡연',     match: d => /흡연|담배/.test(d.content) },
+  { key:'보고·허위',label:'📋 보고·허위', match: d => /허위|보고|누락|유출|개인정보|불성실한 보고/.test(d.content) },
+  { key:'품위·복장',label:'👔 품위·복장', match: d => /복장|용모|품위|인사예절|불손|머리망|염색|장신구/.test(d.content) },
+  { key:'시설·물품',label:'🏛️ 시설·물품', match: d => /시설|장비|비품|급·대여품|분실|훼손|파손|전기|전열|취사/.test(d.content) },
+  { key:'수업·학습',label:'📚 수업·학습', match: d => /수업|교재|준비물|전자기기|휴대폰|스마트워치|시험 부정|평가 담합/.test(d.content) },
+  { key:'생활질서', label:'🏠 생활질서', match: d => /소등|쓰레기|소음|청소|정리정돈|음식물|보행|주차|수송버스|전원차단|애정 행위|SNS|기록정보|집단 행위/.test(d.content) },
+];
+
+function getTopics(item) {
+  return TOPIC_MAP.filter(t => t.key !== '퇴교' && t.match(item)).map(t => t.key);
+}
+
+function getBadgeClass(cat) {
+  return { exit:'badge-exit', high:'badge-high', mid:'badge-mid', low:'badge-low', minor:'badge-minor' }[cat] || 'badge-minor';
+}
+
+let currentCatKey = '전체';
+
+function startCat() {
+  currentCatKey = '전체';
+  showScreen('catScreen');
+  buildCatTabs();
+  renderCatList();
+}
+
+function buildCatTabs() {
+  const tabs = document.getElementById('catTabs');
+  tabs.innerHTML = '';
+  const allTabs = [{ key:'전체', label:'📋 전체' }, ...TOPIC_MAP];
+  allTabs.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab' + (t.key === currentCatKey ? ' active' : '');
+    btn.dataset.cat = t.key;
+    btn.textContent = t.label || t.key;
+    // count
+    const cnt = t.key === '전체' ? DATA.length : DATA.filter(t.match || (() => false)).length;
+    btn.textContent = (t.label || t.key) + ` (${cnt})`;
+    btn.onclick = () => { currentCatKey = t.key; buildCatTabs(); renderCatList(); };
+    tabs.appendChild(btn);
+  });
+}
+
+function renderCatList() {
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+
+  let items;
+  if (currentCatKey === '전체') {
+    items = DATA;
+  } else {
+    const topic = TOPIC_MAP.find(t => t.key === currentCatKey);
+    items = topic ? DATA.filter(topic.match) : DATA;
+  }
+
+  document.getElementById('catCountDisp').textContent = `${items.length}개 항목`;
+
+  items.forEach(item => {
+    const topics = getTopics(item);
+    const div = document.createElement('div');
+    div.className = 'cat-item anim';
+    div.innerHTML = `
+      <span class="cat-score-badge ${getBadgeClass(item.cat)}">${item.score}</span>
+      <div class="cat-item-content">
+        ${item.content.replace(/\n/g, '<br>')}
+        <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;">
+          ${topics.map(t => `<span class="cat-keyword">${TOPIC_MAP.find(x=>x.key===t)?.label||t}</span>`).join('')}
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  if (!items.length) {
+    list.innerHTML = '<div style="color:var(--muted);padding:24px;text-align:center;">해당 항목이 없어요</div>';
+  }
+}
+
+// --- FLASHCARD ---
+let cards = [], fcIdx = 0, fcFlipped = false;
+function startFlash() {
+  cards = [...DATA];
+  fcIdx = 0;
+  showScreen('flashScreen');
+  renderCard();
+}
+function shuffleCards() {
+  shuffleArr(cards);
+  fcIdx = 0;
+  renderCard();
+}
+function renderCard() {
+  const c = cards[fcIdx];
+  const card = document.getElementById('flashcard');
+  // reset flip
+  card.classList.remove('flipped');
+  fcFlipped = false;
+
+  document.getElementById('fcFront').textContent = c.content;
+  document.getElementById('fcScore').textContent = c.score;
+  document.getElementById('fcTag').textContent = tagLabel[c.cat];
+  document.getElementById('fcTag').className = 'fc-tag ' + tagClass[c.cat];
+
+  const scoreLabel = {
+    exit: '즉시 퇴교 처리',
+    high: '고감점 항목',
+    mid: '중감점 항목',
+    low: '저감점 항목',
+    minor: '경미한 위반'
+  };
+  document.getElementById('fcScoreLabel').textContent = scoreLabel[c.cat];
+
+  const pct = ((fcIdx+1)/cards.length*100).toFixed(0);
+  document.getElementById('fcFill').style.width = pct + '%';
+  document.getElementById('fcCounter').textContent = (fcIdx+1) + ' / ' + cards.length;
+}
+function flipCard() {
+  document.getElementById('flashcard').classList.toggle('flipped');
+}
+function nextCard() {
+  if (fcIdx < cards.length-1) { fcIdx++; renderCard(); }
+}
+function prevCard() {
+  if (fcIdx > 0) { fcIdx--; renderCard(); }
+}
+
+// --- QUIZ ---
+const QUIZ_COUNT = 20;
+let quizQuestions = [], quizIdx = 0, quizScore = 0, answered = false;
+let quizWrongItems = []; // {q, myAnswer} for this session
+let currentMode = 'quiz'; // 'quiz' | 'ox'
+let isRetryMode = false;
+
+// 누적 오답 횟수 저장 (content → count)
+const wrongCounts = {};
+const WEAK_THRESHOLD = 3; // 3회 이상 틀리면 자주 틀리는 항목
+
+function getWeakItems() {
+  return DATA
+    .filter(d => (wrongCounts[d.content] || 0) >= WEAK_THRESHOLD)
+    .sort((a, b) => (wrongCounts[b.content] || 0) - (wrongCounts[a.content] || 0));
+}
+
+function updateWeakBadge() {
+  const count = getWeakItems().length;
+  const badge = document.getElementById('weakBadgeHome');
+  if (badge) {
+    badge.innerHTML = count > 0
+      ? `<span style="background:var(--exit);color:#fff;font-size:0.72rem;font-weight:900;padding:3px 8px;border-radius:99px;">🔥 ${count}개</span>`
+      : '';
+  }
+}
+
+function startWeak() {
+  showScreen('weakScreen');
+  renderWeakScreen();
+}
+
+function renderWeakScreen() {
+  const weak = getWeakItems();
+  const maxCount = weak.length > 0 ? (wrongCounts[weak[0].content] || 1) : 1;
+
+  document.getElementById('weakCountDisp').textContent = weak.length > 0 ? `총 ${weak.length}개` : '';
+  document.getElementById('weakActionRow').style.display = weak.length > 0 ? 'flex' : 'none';
+
+  const content = document.getElementById('weakContent');
+  content.innerHTML = '';
+
+  if (weak.length === 0) {
+    content.innerHTML = `
+      <div class="weak-empty">
+        <div class="weak-empty-icon">🎉</div>
+        <div>아직 3회 이상 틀린 항목이 없어요!</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-top:8px;">객관식·O/X 퀴즈를 풀다 보면<br>자주 틀리는 항목이 여기에 모여요.</div>
+      </div>`;
+    document.getElementById('weakSubMsg').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('weakSubMsg').style.display = 'block';
+
+  const list = document.createElement('div');
+  list.className = 'weak-list';
+
+  weak.forEach((item, i) => {
+    const cnt = wrongCounts[item.content] || 0;
+    const barPct = Math.round((cnt / maxCount) * 100);
+    const fire = cnt >= 7 ? '🔥🔥🔥' : cnt >= 5 ? '🔥🔥' : '🔥';
+
+    const div = document.createElement('div');
+    div.className = 'weak-item anim';
+    div.innerHTML = `
+      <div class="weak-rank-col">
+        <div class="weak-rank">${i + 1}위</div>
+        <div class="weak-fire">${fire}</div>
+      </div>
+      <div class="weak-body">
+        <div class="weak-content-text">${item.content.replace(/\n/g, '<br>')}</div>
+        <div class="weak-meta">
+          <span class="weak-score-tag ${getBadgeClass(item.cat)}">${item.score}</span>
+          <span class="weak-count-tag">✗ ${cnt}번 틀림</span>
+          <div class="weak-bar-wrap"><div class="weak-bar" style="width:${barPct}%"></div></div>
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  content.appendChild(list);
+}
+
+function startWeakQuiz() {
+  const weak = getWeakItems();
+  if (!weak.length) return;
+  openCountModal('quiz', weak);
+}
+
+function startWeakOX() {
+  const weak = getWeakItems();
+  if (!weak.length) return;
+  openCountModal('ox', weak);
+}
+
+function makeQuestions(pool) {
+  return pool.map(item => {
+    const correct = item.score;
+    const allScores = [...new Set(DATA.map(d => d.score))];
+    const wrongs = shuffleArr(allScores.filter(s => s !== correct)).slice(0, 3);
+    const opts = shuffleArr([correct, ...wrongs]);
+    return {
+      item,
+      q: `다음 위반 행위는 몇 점 감점일까요?\n\n"${item.content}"`,
+      opts, correct,
+      explanation: `이 행위의 감점은 ${correct}입니다.`
+    };
+  });
+}
+
+function startQuiz(count = 20, pool = null) {
+  currentMode = 'quiz';
+  isRetryMode = false;
+  const src = pool ? shuffleArr([...pool]) : shuffleArr([...DATA]);
+  const slice = src.slice(0, Math.min(count, src.length));
+  quizQuestions = makeQuestions(slice);
+  quizIdx = 0; quizScore = 0; answered = false; quizWrongItems = [];
+  showScreen('quizScreen');
+  renderQuestion();
+}
+
+function retryAll() {
+  openCountModal(currentMode);
+}
+
+function retryWrong() {
+  isRetryMode = true;
+  if (currentMode === 'quiz') {
+    if (!quizWrongItems.length) return;
+    const wrongPool = quizWrongItems.map(w => w.item);
+    quizIdx = 0; quizScore = 0; answered = false; quizWrongItems = [];
+    quizQuestions = makeQuestions(wrongPool);
+    showScreen('quizScreen');
+    renderQuestion();
+  } else {
+    if (!oxWrongItems.length) return;
+    const wrongPool = oxWrongItems.map(w => w.item);
+    oxIdx = 0; oxScore = 0; oxAnswered = false; oxWrongItems = [];
+    oxQuestions = makeOXQuestions(wrongPool);
+    showScreen('oxScreen');
+    renderOX();
+  }
+}
+
+function renderQuestion() {
+  const total = quizQuestions.length;
+  const q = quizQuestions[quizIdx];
+  answered = false;
+
+  document.getElementById('quizQNum').textContent = `문제 ${quizIdx+1} / ${total}`;
+  document.getElementById('quizScoreDisp').textContent = quizScore;
+  document.getElementById('quizFill').style.width = ((quizIdx+1)/total*100) + '%';
+  document.getElementById('quizQ').textContent = q.q;
+
+  // 오답 횟수 배지
+  const cnt = wrongCounts[q.item.content] || 0;
+  const badge = cnt > 0 ? `<span class="wrong-count-badge" title="누적 ${cnt}번 틀림">✗${cnt}</span>` : '';
+  document.getElementById('quizQ').innerHTML = q.q.replace('\n\n', '<br><br>') + badge;
+
+  const optsEl = document.getElementById('quizOpts');
+  optsEl.innerHTML = '';
+  q.opts.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-opt';
+    btn.textContent = opt;
+    btn.onclick = () => selectAnswer(btn, opt);
+    optsEl.appendChild(btn);
+  });
+
+  document.getElementById('quizFb').className = 'quiz-feedback';
+  document.getElementById('quizFb').textContent = '';
+  document.getElementById('quizReveal').className = 'answer-reveal';
+  document.getElementById('quizRevealText').textContent = '';
+
+  const nb = document.getElementById('quizNextBtn');
+  nb.className = 'btn-quiz-next';
+  nb.textContent = quizIdx === total-1 ? '결과 보기 🎯' : '다음 문제 →';
+
+  document.getElementById('quizCard').classList.remove('anim');
+  void document.getElementById('quizCard').offsetWidth;
+  document.getElementById('quizCard').classList.add('anim');
+}
+
+function selectAnswer(btn, val) {
+  if (answered) return;
+  answered = true;
+
+  const q = quizQuestions[quizIdx];
+  document.querySelectorAll('.quiz-opt').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === q.correct) b.classList.add('correct');
+  });
+
+  const fb = document.getElementById('quizFb');
+  if (val === q.correct) {
+    quizScore++;
+    btn.classList.add('correct');
+    fb.textContent = '✅ 정답! ' + q.explanation;
+    fb.className = 'quiz-feedback show ok';
+    document.getElementById('quizReveal').className = 'answer-reveal';
+  } else {
+    btn.classList.add('wrong');
+    fb.textContent = '❌ 오답입니다!';
+    fb.className = 'quiz-feedback show ng';
+    document.getElementById('quizRevealText').textContent = `정답: ${q.correct}  —  ${q.explanation}`;
+    document.getElementById('quizReveal').className = 'answer-reveal show';
+    // 누적 오답 기록
+    wrongCounts[q.item.content] = (wrongCounts[q.item.content] || 0) + 1;
+    quizWrongItems.push({ item: q.item, myAnswer: val, correct: q.correct });
+    updateWeakBadge();
+  }
+  document.getElementById('quizScoreDisp').textContent = quizScore;
+  document.getElementById('quizNextBtn').classList.add('show');
+}
+
+function nextQuestion() {
+  if (!answered) return;
+  quizIdx++;
+  if (quizIdx >= quizQuestions.length) { showResult(); return; }
+  renderQuestion();
+}
+
+// --- OX QUIZ ---
+const OX_COUNT = 20;
+let oxQuestions = [], oxIdx = 0, oxScore = 0, oxAnswered = false;
+let oxWrongItems = [];
+
+function makeOXQuestions(pool) {
+  return pool.map(item => {
+    const isCorrect = Math.random() < 0.5;
+    const allScores = [...new Set(DATA.map(d => d.score))];
+    const wrongScores = allScores.filter(s => s !== item.score);
+    const shownScore = isCorrect ? item.score : shuffleArr(wrongScores)[0];
+    return { item, content: item.content, realScore: item.score, shownScore, isCorrect };
+  });
+}
+
+function startOX(count = 20, pool = null) {
+  currentMode = 'ox';
+  isRetryMode = false;
+  const src = pool ? shuffleArr([...pool]) : shuffleArr([...DATA]);
+  const slice = src.slice(0, Math.min(count, src.length));
+  oxQuestions = makeOXQuestions(slice);
+  oxIdx = 0; oxScore = 0; oxAnswered = false; oxWrongItems = [];
+  showScreen('oxScreen');
+  renderOX();
+}
+
+function renderOX() {
+  const total = oxQuestions.length;
+  const q = oxQuestions[oxIdx];
+  oxAnswered = false;
+
+  document.getElementById('oxQNum').textContent = `문제 ${oxIdx+1} / ${total}`;
+  document.getElementById('oxScoreDisp').textContent = oxScore;
+  document.getElementById('oxFill').style.width = ((oxIdx+1)/total*100) + '%';
+
+  const cnt = wrongCounts[q.content] || 0;
+  const badge = cnt > 0 ? ` <span class="wrong-count-badge">✗${cnt}</span>` : '';
+  document.getElementById('oxQ').innerHTML = `"${q.content}"` + badge;
+  document.getElementById('oxScoreShown').textContent = q.shownScore + ' 감점';
+
+  document.getElementById('oxFb').className = 'quiz-feedback';
+  document.getElementById('oxFb').textContent = '';
+  document.getElementById('oxReveal').className = 'answer-reveal';
+  document.getElementById('oxRevealText').textContent = '';
+
+  const btnO = document.getElementById('oxBtnO');
+  const btnX = document.getElementById('oxBtnX');
+  btnO.disabled = false; btnX.disabled = false;
+  btnO.className = 'ox-btn o-btn';
+  btnX.className = 'ox-btn x-btn';
+
+  document.getElementById('oxNextBtn').className = 'btn-quiz-next';
+  document.getElementById('oxNextBtn').textContent = oxIdx === total-1 ? '결과 보기 🎯' : '다음 문제 →';
+
+  document.getElementById('oxCard').classList.remove('anim');
+  void document.getElementById('oxCard').offsetWidth;
+  document.getElementById('oxCard').classList.add('anim');
+}
+
+function answerOX(userSaysO) {
+  if (oxAnswered) return;
+  oxAnswered = true;
+
+  const q = oxQuestions[oxIdx];
+  const isRight = (userSaysO === q.isCorrect);
+
+  document.getElementById('oxBtnO').disabled = true;
+  document.getElementById('oxBtnX').disabled = true;
+
+  const fb = document.getElementById('oxFb');
+  if (isRight) {
+    oxScore++;
+    document.getElementById(userSaysO ? 'oxBtnO' : 'oxBtnX').classList.add('correct');
+    fb.textContent = `✅ 정답! 실제 감점은 ${q.realScore}입니다.`;
+    fb.className = 'quiz-feedback show ok';
+    document.getElementById('oxReveal').className = 'answer-reveal';
+  } else {
+    document.getElementById(userSaysO ? 'oxBtnO' : 'oxBtnX').classList.add('wrong');
+    fb.textContent = `❌ 오답!`;
+    fb.className = 'quiz-feedback show ng';
+    document.getElementById('oxRevealText').textContent =
+      `실제 감점은 ${q.realScore} — 표시된 ${q.shownScore}은 ${q.isCorrect ? '맞았습니다' : '틀렸습니다'}.`;
+    document.getElementById('oxReveal').className = 'answer-reveal show';
+    wrongCounts[q.content] = (wrongCounts[q.content] || 0) + 1;
+    oxWrongItems.push({ item: q.item, myAnswer: userSaysO ? 'O' : 'X', correct: q.realScore });
+    updateWeakBadge();
+  }
+  document.getElementById('oxScoreDisp').textContent = oxScore;
+  document.getElementById('oxNextBtn').classList.add('show');
+}
+
+function nextOX() {
+  if (!oxAnswered) return;
+  oxIdx++;
+  if (oxIdx >= oxQuestions.length) { showOXResult(); return; }
+  renderOX();
+}
+
+function showOXResult() {
+  const total = oxQuestions.length;
+  const pct = Math.round(oxScore / total * 100);
+  const wrongCount = oxWrongItems.length;
+  buildResult(pct, oxScore, total, wrongCount, wrongCount > 0, 'O/X까지 완벽 마스터!');
+}
+
+// --- RESULT ---
+let wrongListVisible = false;
+let currentWrongItems = [];
+
+function toggleWrongList() {
+  wrongListVisible = !wrongListVisible;
+  const wrap = document.getElementById('wrongListWrap');
+  const btn = document.getElementById('btnToggleWrong');
+  wrap.className = wrongListVisible ? 'wrong-list-wrap show' : 'wrong-list-wrap';
+  btn.textContent = wrongListVisible ? '📋 오답 닫기' : '📋 오답 보기';
+}
+
+function buildResult(pct, correct, total, wrongCount, hasWrong, perfectMsg) {
+  showScreen('resultScreen');
+  document.getElementById('resultBig').textContent = pct;
+  document.getElementById('resultLabel').textContent = `점 / 100점  (${correct}/${total} 정답)`;
+
+  let emoji, title, sub;
+  if (pct >= 90)      { emoji='🏆'; title='완벽해요!';  sub = perfectMsg; }
+  else if (pct >= 70) { emoji='👍'; title='잘했어요!';  sub='조금만 더 복습하면 완벽해요.'; }
+  else if (pct >= 50) { emoji='📚'; title='더 공부해요'; sub='플래시카드로 한번 더 복습해봐요!'; }
+  else                { emoji='💪'; title='다시 도전!';  sub='차근차근 시작해봐요.'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultSub').textContent = sub;
+
+  // 통계 알약
+  const statsEl = document.getElementById('resultStats');
+  statsEl.innerHTML = `
+    <span class="result-stat-pill pill-correct">✅ 정답 ${correct}개</span>
+    <span class="result-stat-pill pill-wrong">❌ 오답 ${wrongCount}개</span>
+  `;
+
+  // 오답 목록 렌더
+  const wrongSource = currentMode === 'quiz' ? quizWrongItems : oxWrongItems;
+  currentWrongItems = wrongSource;
+  wrongListVisible = false;
+  const wrap = document.getElementById('wrongListWrap');
+  wrap.className = 'wrong-list-wrap';
+  wrap.innerHTML = '';
+
+  if (hasWrong) {
+    wrongSource.forEach((w, i) => {
+      const totalWrong = wrongCounts[w.item.content] || 1;
+      const div = document.createElement('div');
+      div.className = 'wrong-item';
+      div.innerHTML = `
+        <span class="wrong-num">${i+1}번</span>
+        <div class="wrong-content">
+          <div>${w.item.content}</div>
+          <div class="wrong-score-row">
+            <span class="wrong-my">내 답: ${w.myAnswer}</span>
+            <span class="wrong-ans">정답: ${w.correct}</span>
+            <span class="wrong-tries">누적 ${totalWrong}번 틀림</span>
+          </div>
+        </div>`;
+      wrap.appendChild(div);
+    });
+
+    document.getElementById('btnToggleWrong').style.display = 'block';
+    document.getElementById('btnToggleWrong').textContent = '📋 오답 보기';
+    document.getElementById('btnRetryWrong').style.display = 'block';
+  } else {
+    document.getElementById('btnToggleWrong').style.display = 'none';
+    document.getElementById('btnRetryWrong').style.display = 'none';
+  }
+  document.getElementById('btnRetryAll').textContent = '🔄 전체 다시 풀기';
+}
+
+function showResult() {
+  const total = quizQuestions.length;
+  const wrongCount = quizWrongItems.length;
+  buildResult(
+    Math.round(quizScore / total * 100),
+    quizScore, total, wrongCount, wrongCount > 0,
+    '상벌점 기준을 완전히 마스터했어요!'
+  );
+}
+</script>
+</body>
+</html>
